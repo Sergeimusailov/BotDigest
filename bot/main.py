@@ -2,6 +2,7 @@ import asyncio
 import logging
 
 from aiogram import Bot, Dispatcher
+from aiogram.types import BotCommand
 
 from . import config, db
 from .handlers import router
@@ -15,6 +16,14 @@ async def main() -> None:
     bot = Bot(token=config.BOT_TOKEN)
     dp = Dispatcher()
     dp.include_router(router)
+
+    await bot.set_my_commands(
+        [
+            BotCommand(command="preview", description="Что попадёт в дайджест"),
+            BotCommand(command="undo", description="Удалить последнее сообщение"),
+            BotCommand(command="clear", description="Удалить все свои сообщения"),
+        ]
+    )
 
     scheduler = setup_scheduler(bot)
     scheduler.start()

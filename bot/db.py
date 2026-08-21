@@ -41,3 +41,31 @@ def clear_entries() -> None:
     with closing(sqlite3.connect(config.DB_PATH)) as conn:
         conn.execute("DELETE FROM news")
         conn.commit()
+
+
+def get_entries_for_user(user_id: int) -> list[str]:
+    with closing(sqlite3.connect(config.DB_PATH)) as conn:
+        rows = conn.execute(
+            "SELECT text FROM news WHERE user_id = ? ORDER BY id", (user_id,)
+        ).fetchall()
+    return [row[0] for row in rows]
+
+
+def delete_all_for_user(user_id: int) -> int:
+    with closing(sqlite3.connect(config.DB_PATH)) as conn:
+        cursor = conn.execute("DELETE FROM news WHERE user_id = ?", (user_id,))
+        conn.commit()
+        return cursor.rowcount
+
+
+def delete_last_for_user(user_id: int) -> bool:
+    with closing(sqlite3.connect(config.DB_PATH)) as conn:
+        row = conn.execute(
+            "SELECT id FROM news WHERE user_id = ? ORDER BY id DESC LIMIT 1",
+            (user_id,),
+        ).fetchone()
+        if row is None:
+            return False
+        conn.execute("DELETE FROM news WHERE id = ?", (row[0],))
+        conn.commit()
+        return True
