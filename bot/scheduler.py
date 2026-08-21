@@ -1,9 +1,11 @@
 import logging
+from datetime import datetime, timedelta
 
 from aiogram import Bot
 from aiogram.exceptions import TelegramBadRequest
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
+from apscheduler.triggers.date import DateTrigger
 
 from . import config, db
 from .digest import build_digest
@@ -46,19 +48,33 @@ async def send_digest(bot: Bot) -> None:
 
 def setup_scheduler(bot: Bot) -> AsyncIOScheduler:
     scheduler = AsyncIOScheduler(timezone=config.TIMEZONE)
+
+    # TEMPORARY ONE-OFF TEST RUN — revert to the CronTrigger jobs below afterwards.
+    now = datetime.now()
     scheduler.add_job(
         send_morning_reminder,
-        CronTrigger(day_of_week="thu", hour=10, minute=0),
-        args=[bot],
-    )
-    scheduler.add_job(
-        send_evening_reminder,
-        CronTrigger(day_of_week="thu", hour=19, minute=0),
+        DateTrigger(run_date=now + timedelta(minutes=5)),
         args=[bot],
     )
     scheduler.add_job(
         send_digest,
-        CronTrigger(day_of_week="fri", hour=9, minute=0),
+        DateTrigger(run_date=now + timedelta(minutes=10)),
         args=[bot],
     )
+
+    # scheduler.add_job(
+    #     send_morning_reminder,
+    #     CronTrigger(day_of_week="thu", hour=10, minute=0),
+    #     args=[bot],
+    # )
+    # scheduler.add_job(
+    #     send_evening_reminder,
+    #     CronTrigger(day_of_week="thu", hour=19, minute=0),
+    #     args=[bot],
+    # )
+    # scheduler.add_job(
+    #     send_digest,
+    #     CronTrigger(day_of_week="fri", hour=9, minute=0),
+    #     args=[bot],
+    # )
     return scheduler
