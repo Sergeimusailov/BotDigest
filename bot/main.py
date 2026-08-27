@@ -27,6 +27,8 @@ async def main() -> None:
 
     scheduler = setup_scheduler(bot)
     scheduler.start()
+    for job in scheduler.get_jobs():
+        logging.info("Scheduled job %s — next run at %s", job.id, job.next_run_time)
 
     await dp.start_polling(bot)
 
