@@ -66,13 +66,13 @@ def setup_scheduler(bot: Bot) -> AsyncIOScheduler:
     # to the host's local timezone unless given one explicitly, so it must be passed here too.
     scheduler.add_job(
         send_morning_reminder,
-        CronTrigger(day_of_week="thu", hour=10, minute=0, timezone=config.TIMEZONE),
+        CronTrigger(day_of_week="thu", hour=12, minute=0, timezone=config.TIMEZONE),
         args=[bot],
         id="send_morning_reminder",
     )
     scheduler.add_job(
         send_evening_reminder,
-        CronTrigger(day_of_week="thu", hour=19, minute=0, timezone=config.TIMEZONE),
+        CronTrigger(day_of_week="thu", hour=17, minute=0, timezone=config.TIMEZONE),
         args=[bot],
         id="send_evening_reminder",
     )
