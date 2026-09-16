@@ -2,6 +2,7 @@ import logging
 
 from aiogram import Bot
 from aiogram.exceptions import TelegramBadRequest
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from apscheduler.events import EVENT_JOB_ERROR, EVENT_JOB_EXECUTED, EVENT_JOB_MISSED
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
@@ -12,12 +13,22 @@ from .digest import build_digest
 logger = logging.getLogger(__name__)
 
 
+async def _write_news_keyboard(bot: Bot) -> InlineKeyboardMarkup:
+    me = await bot.get_me()
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="✍️ Написать новости", url=f"https://t.me/{me.username}")]
+        ]
+    )
+
+
 async def send_morning_reminder(bot: Bot) -> None:
     logger.info("Running send_morning_reminder")
     await bot.send_message(
         config.CHAT_ID,
         "📝 Сегодня день сбора новостей! Напишите мне в личные сообщения, что у вас "
         "произошло за неделю — в пятницу утром соберу общий дайджест.",
+        reply_markup=await _write_news_keyboard(bot),
     )
     logger.info("send_morning_reminder sent")
 
@@ -28,6 +39,7 @@ async def send_evening_reminder(bot: Bot) -> None:
         config.CHAT_ID,
         "⏰ Напоминание: если ещё не скинули новости мне в личку — самое время, "
         "завтра утром собираю дайджест!",
+        reply_markup=await _write_news_keyboard(bot),
     )
     logger.info("send_evening_reminder sent")
 
@@ -36,16 +48,21 @@ async def send_digest(bot: Bot) -> None:
     logger.info("Running send_digest")
     entries = db.get_all_entries()
     text = build_digest(entries)
+    keyboard = await _write_news_keyboard(bot)
 
     if text is None:
-        await bot.send_message(config.CHAT_ID, "На этой неделе никто не поделился новостями 🤷")
+        await bot.send_message(
+            config.CHAT_ID, "На этой неделе никто не поделился новостями 🤷", reply_markup=keyboard
+        )
     else:
         message = f"📰 Дайджест недели\n\n{text}"
         try:
-            await bot.send_message(config.CHAT_ID, message, parse_mode="Markdown")
+            await bot.send_message(
+                config.CHAT_ID, message, parse_mode="Markdown", reply_markup=keyboard
+            )
         except TelegramBadRequest:
             logger.warning("Digest markdown failed to parse, sending as plain text")
-            await bot.send_message(config.CHAT_ID, message)
+            await bot.send_message(config.CHAT_ID, message, reply_markup=keyboard)
 
     db.clear_entries()
     logger.info("send_digest sent")
