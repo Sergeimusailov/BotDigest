@@ -48,21 +48,16 @@ async def send_digest(bot: Bot) -> None:
     logger.info("Running send_digest")
     entries = db.get_all_entries()
     text = build_digest(entries)
-    keyboard = await _write_news_keyboard(bot)
 
     if text is None:
-        await bot.send_message(
-            config.CHAT_ID, "На этой неделе никто не поделился новостями 🤷", reply_markup=keyboard
-        )
+        await bot.send_message(config.CHAT_ID, "На этой неделе никто не поделился новостями 🤷")
     else:
         message = f"📰 Дайджест недели\n\n{text}"
         try:
-            await bot.send_message(
-                config.CHAT_ID, message, parse_mode="Markdown", reply_markup=keyboard
-            )
+            await bot.send_message(config.CHAT_ID, message, parse_mode="Markdown")
         except TelegramBadRequest:
             logger.warning("Digest markdown failed to parse, sending as plain text")
-            await bot.send_message(config.CHAT_ID, message, reply_markup=keyboard)
+            await bot.send_message(config.CHAT_ID, message)
 
     db.clear_entries()
     logger.info("send_digest sent")
