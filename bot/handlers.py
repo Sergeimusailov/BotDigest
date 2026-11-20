@@ -1,5 +1,9 @@
-from aiogram import F, Router
-from aiogram.filters import Command, CommandStart
+import logging
+
+from aiogram import Bot, F, Router
+from aiogram.enums import ChatMemberStatus
+from aiogram.exceptions import TelegramAPIError
+from aiogram.filters import BaseFilter, Command, CommandStart
 from aiogram.types import (
     CallbackQuery,
     InlineKeyboardButton,
@@ -7,9 +11,54 @@ from aiogram.types import (
     Message,
 )
 
-from . import db
+from . import config, db
+
+logger = logging.getLogger(__name__)
 
 router = Router()
+
+NOT_MEMBER_TEXT = (
+    "Извини, я принимаю новости только от участников нашего чата 🙂"
+)
+
+
+async def is_chat_member(bot: Bot, user_id: int) -> bool:
+    """Проверяет, состоит ли пользователь в групповом чате дайджеста."""
+    try:
+        member = await bot.get_chat_member(config.CHAT_ID, user_id)
+    except TelegramAPIError as exc:
+        logger.warning("Не удалось проверить участника %s: %s", user_id, exc)
+        return False
+
+    if member.status in (
+        ChatMemberStatus.CREATOR,
+        ChatMemberStatus.ADMINISTRATOR,
+        ChatMemberStatus.MEMBER,
+    ):
+        return True
+    # «Ограниченный» участник всё ещё в чате, если is_member=True
+    return member.status == ChatMemberStatus.RESTRICTED and getattr(member, "is_member", False)
+
+
+class IsNotChatMember(BaseFilter):
+    """Срабатывает для личных сообщений от тех, кого нет в групповом чате."""
+
+    async def __call__(self, message: Message, bot: Bot) -> bool:
+        if message.from_user is None:
+            return True
+        return not await is_chat_member(bot, message.from_user.id)
+
+
+# Этот обработчик стоит первым: любое личное сообщение от постороннего
+# перехватывается здесь и дальше не идёт — ни команды, ни сохранение новостей.
+@router.message(F.chat.type == "private", IsNotChatMember())
+async def reject_stranger(message: Message) -> None:
+    logger.info(
+        "Отклонено сообщение от постороннего: id=%s, name=%s",
+        message.from_user.id if message.from_user else None,
+        message.from_user.full_name if message.from_user else None,
+    )
+    await message.answer(NOT_MEMBER_TEXT)
 
 
 @router.message(CommandStart(), F.chat.type == "private")

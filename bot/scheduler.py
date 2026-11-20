@@ -1,6 +1,4 @@
 import logging
-from datetime import datetime, timedelta
-from zoneinfo import ZoneInfo
 
 from aiogram import Bot
 from aiogram.exceptions import TelegramBadRequest
@@ -8,7 +6,6 @@ from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from apscheduler.events import EVENT_JOB_ERROR, EVENT_JOB_EXECUTED, EVENT_JOB_MISSED
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
-from apscheduler.triggers.date import DateTrigger
 
 from . import config, db
 from .digest import build_digest
@@ -96,21 +93,6 @@ def setup_scheduler(bot: Bot) -> AsyncIOScheduler:
         CronTrigger(day_of_week="fri", hour=9, minute=0, timezone=config.TIMEZONE),
         args=[bot],
         id="send_digest",
-    )
-
-    # ONE-OFF, 2026-09-25 only — remove after today. Regular schedule above is untouched.
-    tz = ZoneInfo(config.TIMEZONE)
-    scheduler.add_job(
-        send_morning_reminder,
-        DateTrigger(run_date=datetime.now(tz) + timedelta(seconds=15)),
-        args=[bot],
-        id="onetime_reminder_2026_09_25",
-    )
-    scheduler.add_job(
-        send_digest,
-        DateTrigger(run_date=datetime(2026, 9, 25, 21, 0, 0, tzinfo=tz)),
-        args=[bot],
-        id="onetime_digest_2026_09_25",
     )
 
     scheduler.add_listener(
